@@ -33,9 +33,11 @@
   "serpapi_max_searches_per_run": 4,
   "serpapi_dorks_per_run": 3,
   "serpapi_google_jobs_per_run": 1,
-  "exclude_keywords": [
+    "exclude_keywords": [
     "5+ years",
     "7+ years",
+    "2+ years",
+    "3+ years",
     "senior",
     "staff engineer",
     "lead engineer",

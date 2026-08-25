@@ -9,8 +9,11 @@ OTHER_CITY_KEYWORDS = (
     "hyderabad", "mumbai", "pune", "chennai", "delhi", "gurgaon", "noida", "kolkata",
 )
 JOB_URL_HINTS = (
-    "job", "career", "apply", "opening", "intern", "greenhouse", "lever", "ashby",
-    "workday", "greythr", "keka", "darwinbox", "pyjamahr", "zoho", "smartrecruiters",
+    "job", "career", "apply", "opening", "intern", "position", "join",
+    "greenhouse", "lever", "ashby", "workday", "workable",
+    "greythr", "keka", "darwinbox", "pyjamahr", "zoho", "zohorecruit",
+    "smartrecruiters", "wellfound", "instahyre", "cutshort",
+    "ycombinator.com/jobs", "linkedin.com/jobs",
 )
 SERPAPI_USAGE_FILE = "data/serpapi_usage.json"
 DORK_QUERIES_FILE = "config/dork_queries.json"
