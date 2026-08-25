@@ -92,7 +92,7 @@ Here are new job postings:
 
 RANKING RULES:
 - {location_rule}
-- Experience: internship or new-grad / entry-level only (final-year B.Tech, graduating May 2027). Boost roles mentioning 2027, fresher, undergraduate, 0 years, or new grad.
+- Experience: internship or new-grad / entry-level only (final-year B.Tech, graduating May 2027). Boost roles mentioning 2027, fresher, undergraduate, final year, 0 years, or new grad.
 - Focus areas:
 {focus_text}
 - {product_pref}
