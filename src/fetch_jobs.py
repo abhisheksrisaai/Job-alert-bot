@@ -4,7 +4,14 @@ from datetime import datetime
 from urllib.parse import quote, urlparse
 
 BANGALORE_ALIASES = ("bangalore", "bengaluru", "blr")
-REMOTE_ALIASES = ("remote", "work from home", "wfh", "hybrid")
+REMOTE_ONLY_MARKERS = (
+    "remote only",
+    "fully remote",
+    "work from home",
+    "wfh",
+    "remote-first",
+    "100% remote",
+)
 OTHER_CITY_KEYWORDS = (
     "hyderabad", "mumbai", "pune", "chennai", "delhi", "gurgaon", "noida", "kolkata",
 )
@@ -36,7 +43,10 @@ def _linkedin_location(search_config):
 
 def _linkedin_location_goal(search_config):
     if search_config.get("location_strict"):
-        return "Only include jobs located in Bangalore or Bengaluru."
+        return (
+            "Only include jobs in Bangalore or Bengaluru (on-site or hybrid). "
+            "Exclude remote-only and other cities."
+        )
     return (
         "Include jobs in Bangalore/Bengaluru, Remote, or India-wide roles. "
         "Exclude jobs that are clearly limited to other cities only."
@@ -60,9 +70,13 @@ def _matches_location(job, search_config):
     ).lower()
     if any(city in text for city in OTHER_CITY_KEYWORDS):
         return False
-    if any(alias in text for alias in REMOTE_ALIASES):
+    has_bangalore = any(alias in text for alias in BANGALORE_ALIASES)
+    has_hybrid = "hybrid" in text
+    if any(marker in text for marker in REMOTE_ONLY_MARKERS):
         return False
-    if any(alias in text for alias in BANGALORE_ALIASES):
+    if "remote" in text and not has_bangalore and not has_hybrid:
+        return False
+    if has_bangalore or has_hybrid:
         return True
     loc = (job.get("location") or "").lower()
     if loc:
@@ -161,11 +175,16 @@ def _load_dork_config():
 
 def _build_dork_query(entry, dork_config):
     if entry.get("full_query"):
-        return entry["query"]
-    return (
-        f"{entry['query']} {dork_config['role_core']} "
-        f"{dork_config['location_core']} {dork_config['exclusions']}"
-    )
+        query = entry["query"]
+    else:
+        query = (
+            f"{entry['query']} {dork_config.get('role_core', '')} "
+            f"{dork_config.get('location_core', '')} {dork_config.get('exclusions', '')}"
+        )
+    suffix = dork_config.get("anti_spam_suffix", "")
+    if suffix and suffix not in query:
+        query = f"{query} {suffix}"
+    return query
 
 
 def _company_from_url(url):

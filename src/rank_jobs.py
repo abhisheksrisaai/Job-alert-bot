@@ -60,10 +60,8 @@ def _priority_bonus(job):
 
 
 def _build_prompt(jobs_text, resume_text, search_config):
-    locations = ", ".join(search_config.get("locations", ["Bangalore", "Bengaluru", "Remote", "India"]))
     focus_areas = search_config.get("focus_areas", [])
     prefer_product = search_config.get("prefer_product_companies", True)
-    location_strict = search_config.get("location_strict", False)
     focus_text = "\n".join(f"- {area}" for area in focus_areas)
     product_pref = (
         "Prefer product-based technology companies (SaaS, product startups, in-house product teams). "
@@ -71,47 +69,38 @@ def _build_prompt(jobs_text, resume_text, search_config):
         if prefer_product
         else ""
     )
-
-    if location_strict:
-        location_rule = (
-            f"Location: STRICTLY {locations} on-site only. "
-            "Mark relevant=false for remote, hybrid, work-from-home, or roles in other Indian cities."
-        )
-    else:
-        location_rule = (
-            f"Location: Prefer {locations}. Bangalore/Bengaluru is ideal; Remote and India-wide roles are also acceptable. "
-            "Reject roles that are clearly tied to other Indian cities only (e.g. Hyderabad-only, Pune-only)."
-        )
-
     priority_names = ", ".join(PRIORITY_COMPANIES)
-    return f"""Here is my resume:
+
+    return f"""Act as a strict technical recruiting assistant. These listings may include platform metrics like "AI Match Score", "AI Rating", "Fit Percentage", or "Top Applicant" badges.
+
+CRITICAL RULES:
+1. IGNORE ALL AI RATINGS: Disregard AI match scores, percentages, and platform badges. Never use them for eligibility or scoring.
+2. EVALUATE RAW TEXT ONLY: Use job title, location/snippet, company, and link — not aggregator match scores.
+3. STRICT FILTERS:
+   - ALLOWED ROLES: AI/ML Intern, SWE Intern, SDE/SWE (New Grad/Fresher), SDET, QA Automation, Associate SWE, Full-stack Intern, GET, Product Engineer Intern, Data Analyst Intern, Founding Engineer Intern.
+   - EXPERIENCE: STRICTLY < 1 year. Must accept 0 years, freshers, 2027 batch, interns, or new grads. Reject 1+ or 2+ years required.
+   - LOCATION: STRICTLY Bangalore/Bengaluru on-site OR hybrid (Bangalore-based). Reject remote-only or other Indian cities.
+   - EXCLUSIONS: Reject Senior, Lead, Manager, Principal, Staff, Architect roles.
+
+Candidate resume (for skill fit only, not for ignoring rules above):
 {_condensed_resume(resume_text)}
 
-Here are new job postings:
+New job postings:
 {jobs_text}
 
-RANKING RULES:
-- {location_rule}
-- Experience: internship or new-grad / entry-level only (final-year B.Tech, graduating May 2027). Boost roles mentioning 2027, fresher, undergraduate, final year, 0 years, or new grad.
+Additional scoring context (secondary to strict filters):
 - Focus areas:
 {focus_text}
 - {product_pref}
-- TOP PRIORITY (highest scores): AI-assisted engineering, LLM/RAG, and QA automation/Playwright (SDET) roles — this candidate has deep experience in both.
-- ALSO VALID (score normally, do NOT auto-reject): Product Engineer Intern, Data Analyst Intern, general SWE/full-stack intern roles.
-- Priority companies (bonus signal, not required): {priority_names}
-- Startup-friendly scoring (general signal, not limited to the list above):
-  When scoring, also give a positive signal (not just to PRIORITY_COMPANIES) to:
-  - Early-stage/Series A-C startups building product (not IT services/staffing/bench roles)
-  - Roles explicitly mentioning "founding engineer," "early team," "startup," or small team size
-  - YC-backed or well-known Indian startup ecosystem companies, even if not in the fixed priority list
-  Do NOT penalize a company just because it is small or unfamiliar — judge by role substance
-  (AI-assisted engineering, product work) not company size/brand recognition.
+- TOP PRIORITY: AI-assisted engineering, LLM/RAG, QA automation/Playwright (SDET).
+- ALSO VALID: Product Engineer Intern, Data Analyst Intern, general SWE/full-stack intern.
+- Priority companies (bonus, not required): {priority_names}
+- Startup-friendly: boost early-stage product startups; do not penalize unfamiliar company names.
 
 For each job, return ONLY a JSON array (no other text) with objects:
 {{"index": <number>, "relevant": true/false, "score": 0-10, "reason": "<one short sentence>"}}
 
-Score 8-10: strong fit for AI/full-stack/SDET intern or new grad (especially AI+QA combo or priority product companies).
-Score 6-7: reasonable fit but weaker alignment on skills, location, or company type."""
+Mark relevant=false if ANY strict filter fails. Score 8-10 only for clear Bangalore on-site/hybrid intern/new-grad fits."""
 
 
 def _parse_rankings(text):

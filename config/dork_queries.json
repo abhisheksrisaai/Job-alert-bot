@@ -1,5 +1,6 @@
 {
   "time_filter": "qdr:m",
+  "anti_spam_suffix": "-\"ai match\" -\"ai rating\" -\"match score\" -\"top applicant\" -\"fit score\"",
   "manual_validation_queries": {
     "career_page": "site:{domain} \"careers\" OR \"jobs\" OR \"join us\" OR \"internships\"",
     "career_page_by_name": "\"{company}\" \"Bangalore\" \"careers\" OR \"jobs\" OR \"apply\"",
