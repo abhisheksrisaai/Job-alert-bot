@@ -5,7 +5,7 @@ Scheduled pipeline that finds new Bangalore job postings for AI/product engineer
 ## How it works
 
 ```
-[GitHub Actions cron, every 4 hours]
+[GitHub Actions cron, once daily ~8:30am IST]
         ↓
 [fetch_jobs.py] → TinyFish (LinkedIn) + SerpAPI (Google Jobs), Bangalore only
         ↓
