@@ -1,0 +1,91 @@
+{
+ "n": 9,
+ "n_label_relevant": 8,
+ "model_flagged": 9,
+ "tp": 8,
+ "fp": 1,
+ "fn": 0,
+ "precision": 0.889,
+ "recall": 1.0,
+ "rows": [
+  {
+   "title": "Research Intern - AI",
+   "company": "GE HEALTHCARE",
+   "label": true,
+   "predicted": true,
+   "score": 9,
+   "link_ok": true
+  },
+  {
+   "title": "Intern Ai Software Engineer Bengaluru (India)",
+   "company": "Way2agribusines",
+   "label": true,
+   "predicted": true,
+   "score": 9,
+   "link_ok": true
+  },
+  {
+   "title": "AI Engineering Intern \u2013 Agentic AI & MCP Systems",
+   "company": "Mirai Alpha",
+   "label": true,
+   "predicted": true,
+   "score": 9,
+   "link_ok": true
+  },
+  {
+   "title": "AI & Data Engineering Intern",
+   "company": "Pixxel",
+   "label": true,
+   "predicted": true,
+   "score": 9,
+   "link_ok": true
+  },
+  {
+   "title": "AI Intern - IT (Bengaluru)",
+   "company": "Duroflex",
+   "label": true,
+   "predicted": true,
+   "score": 9,
+   "link_ok": true
+  },
+  {
+   "title": "Applied AI Intern",
+   "company": "Future Agi",
+   "label": true,
+   "predicted": true,
+   "score": 9,
+   "link_ok": true
+  },
+  {
+   "title": "AI intern",
+   "company": "RippleHire",
+   "label": false,
+   "predicted": true,
+   "score": 9,
+   "link_ok": true
+  },
+  {
+   "title": "Full-Stack/AI Engineer - Internship",
+   "company": "Gnani.ai",
+   "label": true,
+   "predicted": true,
+   "score": 9,
+   "link_ok": true
+  },
+  {
+   "title": "AI Frontend Engineer Intern",
+   "company": "SkilloVilla",
+   "label": true,
+   "predicted": true,
+   "score": 9,
+   "link_ok": true
+  }
+ ],
+ "link_audit": {
+  "n_raw": 10,
+  "share_present": 10,
+  "old_specific": 10,
+  "new_specific": 10
+ },
+ "live_links_resolving": "9/9"
+}

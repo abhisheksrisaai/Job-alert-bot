@@ -1,0 +1,9 @@
+{"sample_index": 0, "title": "Research Intern - AI", "company": "GE HEALTHCARE", "relevant": true, "reason": "AI research intern, Bengaluru on-site; passes all strict gates."}
+{"sample_index": 1, "title": "Intern Ai Software Engineer Bengaluru (India)", "company": "Way2agribusines", "relevant": true, "reason": "Borderline (tiny firm, low stipend, SEO mixed in) but passes every strict gate: AI/SWE intern, Bengaluru, fresher-eligible."}
+{"sample_index": 2, "title": "AI Engineering Intern - Agentic AI & MCP Systems", "company": "Mirai Alpha", "relevant": true, "reason": "Agentic-AI intern, Bengaluru; exact profile match."}
+{"sample_index": 3, "title": "AI & Data Engineering Intern", "company": "Pixxel", "relevant": true, "reason": "AI/data intern, Bengaluru, fresher-eligible; exact profile match."}
+{"sample_index": 4, "title": "AI Intern - IT (Bengaluru)", "company": "Duroflex", "relevant": true, "reason": "AI intern, Bengaluru, Python/ML skills; non-tech parent company is a soft preference, not a strict filter."}
+{"sample_index": 5, "title": "Applied AI Intern", "company": "Future Agi", "relevant": true, "reason": "Applied-AI intern, Bengaluru 6-month internship; exact profile match."}
+{"sample_index": 6, "title": "AI intern", "company": "RippleHire", "relevant": false, "reason": "Title says AI Intern but description is AI GTM/marketing workflows, not engineering. Ranker only sees title/company/location, so this tests whether thin context causes a false positive."}
+{"sample_index": 7, "title": "Full-Stack/AI Engineer - Internship", "company": "Gnani.ai", "relevant": true, "reason": "Full-stack + AI agent intern, Bengaluru; exact profile match."}
+{"sample_index": 8, "title": "AI Frontend Engineer Intern", "company": "SkilloVilla", "relevant": true, "reason": "AI frontend intern, Bangalore WFO with PPO; fits role and location gates."}
