@@ -9,6 +9,20 @@ BATCH_SIZE = 5
 RESUME_MAX_CHARS = 1200
 PRIORITY_BONUS = 2
 
+# Retry policy for Groq: transient failures only (429/5xx/connection drops).
+# Auth, bad-request, and not-found errors raise immediately — retrying those
+# burns free-tier quota for nothing.
+GROQ_MAX_ATTEMPTS = 3
+GROQ_BACKOFF_S = (2, 4, 8)
+GROQ_RETRYABLE_STATUS = (429, 500, 502, 503, 504)
+GROQ_RETRYABLE_ERRORS = (
+    "APIConnectionError",
+    "APITimeoutError",
+    "Timeout",
+    "RateLimitError",
+    "InternalServerError",
+)
+
 PRIORITY_COMPANIES = [
     "Razorpay",
     "Flipkart",
@@ -118,18 +132,53 @@ def _parse_rankings(text):
         return []
 
 
+def _groq_transient(exc):
+    status = getattr(exc, "status_code", None)
+    if status in GROQ_RETRYABLE_STATUS:
+        return True
+    return type(exc).__name__ in GROQ_RETRYABLE_ERRORS
+
+
+def _groq_retry_after(exc):
+    try:
+        headers = getattr(getattr(exc, "response", None), "headers", None) or {}
+        value = headers.get("Retry-After")
+        if value is not None:
+            return min(float(value), 60)
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
+def _create_with_retry(client, model, prompt, max_attempts=GROQ_MAX_ATTEMPTS):
+    last_exc = None
+    for attempt in range(max_attempts):
+        try:
+            return client.chat.completions.create(
+                model=model,
+                max_tokens=2000,
+                temperature=0.2,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        except Exception as exc:
+            if not _groq_transient(exc) or attempt == max_attempts - 1:
+                raise
+            last_exc = exc
+            delay = _groq_retry_after(exc)
+            if delay is None:
+                delay = GROQ_BACKOFF_S[min(attempt, len(GROQ_BACKOFF_S) - 1)]
+            print(f"Warning: Groq transient error ({exc}); retry {attempt + 1}/{max_attempts} in {delay}s.")
+            time.sleep(delay)
+    raise last_exc
+
+
 def _rank_batch(client, model, batch, resume_text, search_config):
     jobs_text = "\n".join(
         f"{i+1}. {j['title']} at {j.get('company', '?')} ({j.get('location', '?')}) - {j['link']}"
         for i, j in enumerate(batch)
     )
     prompt = _build_prompt(jobs_text, resume_text, search_config)
-    response = client.chat.completions.create(
-        model=model,
-        max_tokens=2000,
-        temperature=0.2,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    response = _create_with_retry(client, model, prompt)
     text = response.choices[0].message.content
     return _parse_rankings(text)
 

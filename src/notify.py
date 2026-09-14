@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 
 
@@ -33,21 +34,39 @@ def send_telegram_digest(ranked_jobs):
         else:
             message += "🔗 (no link)\n\n"
 
-    try:
-        response = requests.post(
-            url,
-            data={
-                "chat_id": chat_id,
-                "text": message[:4000],
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-            },
-            timeout=15,
-        )
-        data = response.json()
+    last_error = None
+    for attempt in range(2):
+        try:
+            response = requests.post(
+                url,
+                data={
+                    "chat_id": chat_id,
+                    "text": message[:4000],
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                },
+                timeout=15,
+            )
+        except requests.RequestException as exc:
+            last_error = f"request failed: {exc}"
+            if attempt == 0:
+                print(f"Warning: Telegram {last_error}; retrying once.")
+                time.sleep(2)
+                continue
+            break
+        try:
+            data = response.json()
+        except ValueError:
+            data = {}
         if response.ok and data.get("ok"):
             print(f"Telegram digest sent ({min(len(ranked_jobs), 10)} jobs).")
-        else:
-            print(f"Warning: Telegram send failed: {data}")
-    except requests.RequestException as exc:
-        print(f"Warning: Telegram request failed: {exc}")
+            return
+        # 5xx may clear on retry; 4xx (bad token/chat id) never will.
+        if response.status_code >= 500 and attempt == 0:
+            last_error = f"HTTP {response.status_code}"
+            print(f"Warning: Telegram {last_error}; retrying once.")
+            time.sleep(2)
+            continue
+        last_error = f"send failed: {data or response.status_code}"
+        break
+    print(f"Warning: Telegram digest not sent ({last_error}).")

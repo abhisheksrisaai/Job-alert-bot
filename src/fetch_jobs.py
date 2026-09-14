@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from datetime import datetime
 from urllib.parse import quote, urlparse
 
@@ -25,6 +26,12 @@ JOB_URL_HINTS = (
 SERPAPI_USAGE_FILE = "data/serpapi_usage.json"
 DORK_QUERIES_FILE = "config/dork_queries.json"
 SERPAPI_MONTHLY_LIMIT = 100
+
+# Retry policy for SerpAPI: transient failures only. Quota/plan/key errors
+# (SerpAPI "error" payload, non-429 4xx) never retry — they'd burn quota.
+SERPAPI_MAX_ATTEMPTS = 3
+SERPAPI_BACKOFF_S = (1, 2, 4)
+SERPAPI_RETRYABLE_STATUS = (429, 500, 502, 503, 504)
 
 try:
     from tinyfish import TinyFish, BrowserProfile
@@ -137,31 +144,72 @@ def _serpapi_budget_remaining(usage, search_config):
     return max(0, min(per_run_cap, remaining_month))
 
 
-def _serpapi_search(params, usage):
+def _sleep_backoff(attempt, retry_after=None):
+    if retry_after is not None:
+        try:
+            delay = min(float(retry_after), 30)
+        except (TypeError, ValueError):
+            delay = SERPAPI_BACKOFF_S[min(attempt, len(SERPAPI_BACKOFF_S) - 1)]
+    else:
+        delay = SERPAPI_BACKOFF_S[min(attempt, len(SERPAPI_BACKOFF_S) - 1)]
+    time.sleep(delay)
+
+
+def _serpapi_search(params, usage, max_attempts=SERPAPI_MAX_ATTEMPTS):
     import requests
 
     if usage["count"] >= search_config_get_monthly_limit():
         return None, usage
 
-    try:
-        r = requests.get("https://serpapi.com/search", params=params, timeout=30)
-        data = r.json()
-    except requests.RequestException as exc:
-        print(f"Warning: SerpAPI request failed: {exc}")
-        return None, usage
+    last_error = "unknown"
+    for attempt in range(max_attempts):
+        try:
+            r = requests.get("https://serpapi.com/search", params=params, timeout=30)
+        except requests.RequestException as exc:
+            last_error = f"request failed: {exc}"
+            if attempt < max_attempts - 1:
+                print(f"Warning: SerpAPI {last_error}; retry {attempt + 1}/{max_attempts}.")
+                _sleep_backoff(attempt)
+                continue
+            print(f"Warning: SerpAPI {last_error}; out of retries.")
+            return None, usage
 
-    usage["count"] += 1
-    _save_serpapi_usage(usage)
+        try:
+            data = r.json()
+        except ValueError:
+            data = {}
 
-    if _serpapi_rate_limited(r, data):
-        print(
-            f"Warning: SerpAPI rate limit after {usage['count']} searches this month."
-        )
-        return None, usage
-    if not r.ok:
-        print(f"Warning: SerpAPI HTTP {r.status_code}")
-        return None, usage
-    return data, usage
+        if r.status_code in SERPAPI_RETRYABLE_STATUS:
+            last_error = f"HTTP {r.status_code}"
+            retry_after = r.headers.get("Retry-After") if r.headers else None
+            if attempt < max_attempts - 1:
+                print(f"Warning: SerpAPI {last_error}; retry {attempt + 1}/{max_attempts}.")
+                _sleep_backoff(attempt, retry_after)
+                continue
+            print(f"Warning: SerpAPI {last_error}; out of retries.")
+            return None, usage
+
+        # Any top-level "error" payload is a failed search: it consumes no
+        # quota and must not flow downstream as if it were results.
+        if isinstance(data, dict) and "error" in data:
+            if _serpapi_rate_limited(r, data):
+                print("Warning: SerpAPI rate/quota limit; not retrying.")
+            else:
+                print(f"Warning: SerpAPI error: {data.get('error')}")
+            return None, usage
+        if not r.ok:
+            print(f"Warning: SerpAPI HTTP {r.status_code}")
+            return None, usage
+
+        # Only accepted searches consume monthly quota. Failed and
+        # rate-limited calls used to increment the counter too, silently
+        # shrinking the 100-search free budget.
+        usage["count"] += 1
+        _save_serpapi_usage(usage)
+        return data, usage
+
+    print(f"Warning: SerpAPI gave up: {last_error}.")
+    return None, usage
 
 
 def search_config_get_monthly_limit():
@@ -369,13 +417,43 @@ def fetch_linkedin_jobs(search_config):
     return all_jobs
 
 
+def _is_job_specific_link(link):
+    """True if the link identifies one posting, not a search page."""
+    if not link:
+        return False
+    lowered = link.lower()
+    if "google.com/search" in lowered and "htidocid" not in lowered:
+        return False
+    return True
+
+
 def get_job_link(job):
-    apply_options = job.get("apply_options", [])
-    if apply_options and apply_options[0].get("link"):
-        return apply_options[0]["link"]
-    related = job.get("related_links", [])
-    if related and related[0].get("link"):
-        return related[0]["link"]
+    """Best apply/deep link for a SerpAPI Google Jobs result.
+
+    Preference order:
+      1. Direct apply link (ATS / employer site) — best for "Apply".
+      2. share_link — Google's per-job deep link (embeds htidocid); this is
+         what the old code skipped, falling through to a generic search page.
+      3. related_links[0] — usually a "View job" mirror of the same posting.
+      4. Generic Google Jobs search URL — last resort, does NOT identify the
+         posting (kept so the digest still shows something clickable).
+
+    Never returns the raw job_id blob: it is internal SerpAPI bookkeeping
+    (base64 JSON), not a URL.
+    """
+    apply_options = job.get("apply_options") or []
+    for option in apply_options:
+        link = option.get("link") if isinstance(option, dict) else None
+        if _is_job_specific_link(link):
+            return link
+    share_link = job.get("share_link")
+    if _is_job_specific_link(share_link):
+        return share_link
+    related = job.get("related_links") or []
+    for entry in related:
+        link = entry.get("link") if isinstance(entry, dict) else None
+        if _is_job_specific_link(link):
+            return link
     title = job.get("title", "")
     company = job.get("company_name", "")
     query = f"{title} {company}".replace(" ", "+")
